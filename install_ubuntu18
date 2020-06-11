@@ -1,0 +1,89 @@
+#!/bin/bash
+
+root_dir=/opt/dero
+timezone=UTC
+
+
+echo "Installing dependencies"
+
+sudo apt-get install -y wget
+sudo apt-get install -y zip
+sudo apt-get install -y unzip
+sudo apt-get install -y curl
+sudo apt-get install -y ntp
+sudo apt-get install -y git
+sudo apt-get install -y screen
+sudo apt update -y
+
+echo "Setting up NTP and timezone to UTC"
+
+sudo timedatectl set-timezone $timezone
+sudo systemctl enable ntpd
+sudo systemctl start ntpd
+date
+
+echo "Creating Directory structure"
+
+sudo mkdir $root_dir
+sudo mkdir $root_dir/mainnet
+sudo mkdir $root_dir/stats
+sudo mkdir $root_dir/scripts
+sudo mkdir $root_dir/tmp
+
+echo "installing nodejs and npm"
+
+curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+
+sudo apt-get install -y nodejs npm
+
+echo "downloading DERO binaries"
+
+cd $root_dir/tmp
+
+wget https://github.com/deroproject/derosuite/releases/download/AstroBWT_optimized_miner5/dero_linux_amd64_2.2.0-5.Atlantis.Astrobwt+07032020.tar.gz
+
+echo "extracting"
+
+tar -xvf dero_linux_amd64_2.2.0-5.Atlantis.Astrobwt+07032020.tar.gz
+
+echo "moving files to $root_dir"
+
+sudo mv dero_linux_amd64/derod-linux-amd64 $root_dir/derod-linux-amd64
+
+echo "installing stats client"
+
+cd $root_dir/tmp
+git clone https://github.com/deroproject/dero-network-stats.git
+cd $root_dir/tmp/dero-network-stats
+npm install pkg
+
+sudo mv $root_dir/tmp/dero-network-stats/build/stats-client-linux $root_dir/stats/stats-client-linux
+
+echo "Checking for blockchain db and downloading bootstrap"
+
+if [ ! -f $root_dir/mainnet/derod_database.db ]; then
+    wget -O $root_dir/mainnet/derod_database_03_09_2020.zip http://us-blockchain.dero.network/derod_database_03_09_2020.zip && cd $root_dir/mainnet/ && unzip derod_database_03_09_2020.zip
+  else
+    echo "### database exists, skipping bootstrap!"
+fi
+
+
+echo "Setting up to start on boot"
+
+(crontab -l ; echo "@reboot sleep 10 && cd $root_dir && ./derod-linux-amd64") | crontab -
+(crontab -l ; echo "@reboot sleep 20 && cd $root_dir/stats && ./stats-client-linux") | crontab -
+
+
+echo "Cleaning up."
+
+sudo rm -R $root_dir/tmp
+
+cd $root_dir
+
+echo "Installation complete."
+
+ls -r
+
+echo "Setup the network stats client. After the client is installed, please reboot your machine."
+
+cd $root_dir/stats && ./stats-client-linux
