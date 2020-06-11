@@ -1,6 +1,6 @@
 #!/bin/bash
 
-root_dir=/opt/dero
+root_dir=/dero
 timezone=UTC
 
 
